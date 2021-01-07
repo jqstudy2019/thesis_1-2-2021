@@ -1,0 +1,37 @@
+LAMMPS (9 Oct 2020)
+OMP_NUM_THREADS environment is not set. Defaulting to 1 thread. (src/comm.cpp:94)
+  using 1 OpenMP thread(s) per MPI task
+# LAMMPS input file for RBC simulation, written by Hongyan Yuan & Ralph Kfoury, 2015
+
+
+variable     infile  	string  cleaned-up-v1
+variable     datafile  	string  RBC_V4
+
+
+variable     P_damp  equal  1                                                # Sets the Pressure damping variable used in the following " fix npt" commands
+variable     P  equal  0.05                                                  # Sets the desired pressure of the system used in the following " fix npt" commands
+variable     scale1 equal ramp(2.7,2.52)                                      # Sets the scale performed in the final fix on water scaling down sigma from 2.7- 2.5
+variable     ew  equal 0.2                                                   # Sets the energy well ( epsilon) variable used in the pair coefficient specifications
+variable     ini_T  equal  0.02		                                     # Sets the initial temperature used in the fix commands below
+variable     T  equal  0.23                                                  # Sets the final temperature used in the fix commands below
+variable     LD equal  1.0                                                   # Sets the temperature damping parameter used in fix commands below
+variable     beta  equal 0.0194*0.0
+
+
+units	     lj
+
+atom_style   hybrid ellipsoid peri molecular
+WARNING: Atom_style hybrid defines both pertype and peratom masses - both must be set, only peratom masses will be used (src/atom_vec_hybrid.cpp:157)
+WARNING: Peratom rmass is in multiple sub-styles - must be used consistently (src/atom_vec_hybrid.cpp:219)
+
+bond_style   harmonic                                    # Sets the bond style as harmonic spring defined by Hooke's law
+
+boundary     p p p                                                           # Creates the periodic boundaries of the simulation box
+
+read_data    ${datafile}.data                                           # Specifies which read data file will be used to read in initial coordinates of system
+read_data    RBC_V4.data                                           
+Reading data file ...
+  orthogonal box = (-35.000000 -35.000000 -35.000000) to (35.000000 35.000000 35.000000)
+  1 by 1 by 1 MPI processor grid
+  reading atoms ...
+ERROR on proc 0: Expected integer parameter instead of '1.000' in input script or data file (src/atom_vec.cpp:1777)
