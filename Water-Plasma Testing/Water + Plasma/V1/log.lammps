@@ -1,0 +1,27 @@
+LAMMPS (2 Jun 2020)
+OMP_NUM_THREADS environment is not set. Defaulting to 1 thread. (src/comm.cpp:95)
+  using 1 OpenMP thread(s) per MPI task
+##############################################################################################################################
+# in.Plasma_H2O_Test_V9 - This is an input file for a membrne just kinda stiting there (hopefully looking pretty ; and STABLE )
+
+# By: John Quinn
+#
+# Date: 8/5/2020
+#
+###############################################################################################################################
+
+units				lj
+
+atom_style			molecular
+
+dimension			3
+
+boundary 			p p p
+
+read_data			Plasma_H2O_Test_V9.1.data
+  orthogonal box = (0.0 0.0 0.0) to (100.0 100.0 100.0)
+  1 by 1 by 1 MPI processor grid
+  reading atoms ...
+  41981 atoms
+ERROR: Invalid data file section: Bonds (src/read_data.cpp:527)
+Last command: read_data			Plasma_H2O_Test_V9.1.data

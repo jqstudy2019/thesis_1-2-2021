@@ -1,0 +1,43 @@
+##############################################################################################################################
+# in.Plasma_H2O_Test_V9 - This is an input file for a membrne just kinda stiting there (hopefully looking pretty ; and STABLE )
+
+# By: John Quinn
+#
+# Date: 8/5/2020
+#
+###############################################################################################################################
+
+units				lj
+
+atom_style			molecular
+
+dimension			3
+
+boundary 			p p p
+
+read_data			Plasma_H2O_Test_V9.1.data
+
+group				Center type 1
+
+neighbor			0.3 bin
+neigh_modify		delay 0 every 1 check yes
+
+mass				* 1.0
+
+bond_style			harmonic 
+bond_coeff			1 8 1.2
+
+pair_style 			lj/cut 2.5
+pair_coeff 			1 1 1 1
+pair_coeff 			1 2 1 1
+pair_coeff 			1 3 1 1
+
+timestep			0.001
+
+thermo				1000
+
+dump 				1 all atom 50 dump.Plasma_H2O_Test_V9
+
+fix 				1 all nve
+
+run					100000
