@@ -1,0 +1,52 @@
+##############################################################################################################################
+# in.Potential_Test_TEMPLATE
+#
+# By: John Quinn
+#
+# Date: 9/21/2020
+#
+###############################################################################################################################
+
+units				micro
+
+atom_style			molecular
+
+dimension			3
+
+boundary 			p p p
+
+read_data			Profs_Sim_10_point_V1.3.data
+
+neighbor			1.0 bin
+neigh_modify		delay 0 every 1 check yes one 100000 page 1000000
+
+comm_modify cutoff 	6.5
+
+mass				* 1.0
+
+velocity			all set 1 0 0 
+
+angle_style 		harmonic
+angle_coeff 		1 300.0 107.0
+
+dihedral_style 		harmonic
+dihedral_coeff 		1 80.0 1 2
+
+bond_style			harmonic 
+bond_coeff			1 50 1.2
+
+pair_style 			lj/cut 2.5
+
+pair_coeff 			1 1 1 .1 2.8
+
+timestep			0.00001
+
+thermo				1000
+
+dump 				1 all atom 500 dump.profs_sim_ver7
+
+fix 				1 all nve
+
+fix 				2 all bond/create 10 1 1 0.5 1 atype 1 dtype 1 
+
+run					1000000
