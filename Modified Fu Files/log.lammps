@@ -1,0 +1,488 @@
+LAMMPS (24 Dec 2020)
+OMP_NUM_THREADS environment is not set. Defaulting to 1 thread. (src/comm.cpp:94)
+  using 1 OpenMP thread(s) per MPI task
+
+
+
+variable     infile  	string  membrane_v4
+variable     datafile  	string  hybrid
+
+
+variable     P_damp  equal  1                                                # Sets the Pressure damping variable used in the following " fix npt" commands
+variable     P  equal  0.05                                                  # Sets the desired pressure of the system used in the following " fix npt" commands
+variable     scale1 equal ramp(2.7,2.52)                                      # Sets the scale performed in the final fix on water scaling down sigma from 2.7- 2.5
+variable     ew  equal 0.2                                                   # Sets the energy well ( epsilon) variable used in the pair coefficient specifications
+variable     ini_T  equal  0.02		                                     # Sets the initial temperature used in the fix commands below
+variable     T  equal  0.23                                                  # Sets the final temperature used in the fix commands below
+variable     LD equal  1.0                                                   # Sets the temperature damping parameter used in fix commands below
+variable     beta  equal 0.0194*0.0
+
+
+units	     lj
+
+atom_style   hybrid molecular ellipsoid
+WARNING: Atom style hybrid defines both, per-type and per-atom masses; both must be set, but only per-atom masses will be used (src/atom_vec_hybrid.cpp:157)
+
+bond_style   harmonic                                    # Sets the bond style as harmonic spring defined by Hooke's law
+
+boundary     p p p                                                           # Creates the periodic boundaries of the simulation box
+
+read_data    ${datafile}.data                                           # Specifies which read data file will be used to read in initial coordinates of system
+read_data    hybrid.data                                           
+Reading data file ...
+  orthogonal box = (-35.000000 -35.000000 -35.000000) to (35.000000 35.000000 35.000000)
+  1 by 1 by 1 MPI processor grid
+  reading atoms ...
+  21702 atoms
+  8346 ellipsoids
+  scanning bonds ...
+  6 = max bonds/atom
+  reading bonds ...
+  3202 bonds
+Finding 1-2 1-3 1-4 neighbors ...
+  special bond factors lj:    0        0        0       
+  special bond factors coul:  0        0        0       
+     8 = max # of 1-2 neighbors
+     8 = max # of 1-3 neighbors
+    15 = max # of 1-4 neighbors
+    22 = max # of special neighbors
+  special bonds CPU = 0.006 seconds
+  read_data CPU = 0.048 seconds
+
+
+# spectrin bonds
+bond_coeff   1   50   1.5                                                 # Defines the bond coefficients and spring constant for the spectrin network bonds
+
+# membrane-spectrin anchoring
+bond_coeff   2*3  20  2.0                                                  # Defines the bond coefficients and spring constant for the transmembrane protein to spectrin network bonds
+
+mass         *          1.0
+
+set type     1*2 shape  1 1 1   					     # membrane particle are rigid body, it needs shape parameter to be set
+Setting atom values ...
+  8346 settings made for shape
+
+group        bilayer  type 1 2                                               # Creates a group called bilayer which consists of type 1 and 2 particles,
+8346 atoms in group bilayer
+									     #(Type 1 Bilayer, Type 2 Transmembrane proteins)
+
+group        network   type 3 4 5                                            # Creates a group called network which consists of type 3 4 5 particles
+2722 atoms in group network
+group        anchor_bonds   type  2  3  5
+644 atoms in group anchor_bonds
+group        water_in  type 6                                                # Creates a group called water_in consisting of type 6 particles ( Type 6 = Water inside Membrane)
+1333 atoms in group water_in
+group        water_out type 7                                                # Creates a group called water_out consisting of type 7 particles ( Type 7 = Water Outside Membrane)
+9301 atoms in group water_out
+group        water   type 6 7
+10634 atoms in group water
+group			fix1 type 3 4 5 6 7 	                                               # Creates a group called water consisting of both type 6 and 7 particles ( Water inside + Out)
+13356 atoms in group fix1
+
+
+velocity     bilayer create ${T} 87287 loop geom                             # Creates Initial Velocity for bilayer particles ( Type 1 and 2)
+velocity     bilayer create 0.23 87287 loop geom                             
+velocity     network create ${ini_T} 87287 loop geom                         # Creates Initial Velocity for network particles ( Type 3 and 4 and 5)
+velocity     network create 0.02 87287 loop geom                         
+velocity     water create ${T} 87287 loop geom                               # Creates Initial Velocity for water particles ( Type 6 and 7 )
+velocity     water create 0.23 87287 loop geom                               
+
+
+
+pair_style   hybrid   lj/cut 3.6                         # Sets the pair_style potentials used for the simulation,
+                                                                             #in the case both lennard-jones/cut and the fluidmembrane potential
+
+pair_coeff   1*2    1*2   lj/cut   ${ew} 1.0        # Sets the pair coefficients and parameters between type 1 and 2 (bilayer) particles
+pair_coeff   1*2    1*2   lj/cut   0.2 1.0        
+pair_coeff   1*2    3*5   lj/cut   ${ew} 1.0                                 # Sets the pair coefficients (Epsilon, Sigma) and parameters between type 1,2 (bilayer) and 3,4,5 ( Network Particles)
+pair_coeff   1*2    3*5   lj/cut   0.2 1.0                                 
+pair_coeff   1*2    6*7   lj/cut   ${ew} 1.0                                 # Sets the pair coefficients (Epsilon, Sigma) for interaction  between type 1,2 (bilayer) and 6,7 (water) particles
+pair_coeff   1*2    6*7   lj/cut   0.2 1.0                                 
+pair_coeff   3*5    3*5   lj/cut   ${ew} 1.0                                 # Sets the pair coefficients (Epsilon, Sigma) for interaction  between type 3,4,5 (network)
+pair_coeff   3*5    3*5   lj/cut   0.2 1.0                                 
+                                                                             # and type 3,4,5 (network) particles
+
+pair_coeff   3*5    6*7   lj/cut   ${ew} 1.0                                 # Sets the pair coefficients (Epsilon, Sigma) for interaction between type 3,4,5 (network)
+pair_coeff   3*5    6*7   lj/cut   0.2 1.0                                 
+                                                                             # and type 6,7 (water) particles
+
+pair_coeff   6*7    6*7   lj/cut   ${ew} 2.7                                 # Sets the pair coefficients (Epsilon, Sigma) for interaction between type 6,7 (water)
+pair_coeff   6*7    6*7   lj/cut   0.2 2.7                                 
+                                                                             # and type 6,7 (water) particles
+
+neighbor    1.0 bin
+
+thermo_style custom step temp press ebond                                         # Printing thermodynamic data to the screen and log file
+
+thermo	     200                                                             # Sets the number of timesteps to run before printing out thermodynamic data
+
+timestep     0.005                                                            # Sets the timestep of the simulation
+
+### equilibrium
+
+
+fix         1 fix1 npt temp ${T} ${T} ${LD} iso ${P} ${P} ${LD}
+fix         1 fix1 npt temp 0.23 ${T} ${LD} iso ${P} ${P} ${LD}
+fix         1 fix1 npt temp 0.23 0.23 ${LD} iso ${P} ${P} ${LD}
+fix         1 fix1 npt temp 0.23 0.23 1 iso ${P} ${P} ${LD}
+fix         1 fix1 npt temp 0.23 0.23 1 iso 0.05 ${P} ${LD}
+fix         1 fix1 npt temp 0.23 0.23 1 iso 0.05 0.05 ${LD}
+fix         1 fix1 npt temp 0.23 0.23 1 iso 0.05 0.05 1
+dump	    	1 all atom 50  dump.run.${infile}
+dump	    	1 all atom 50  dump.run.membrane_v4
+run 					10000
+Neighbor list info ...
+  update every 1 steps, delay 10 steps, check yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 4.6
+  ghost atom cutoff = 4.6
+  binsize = 2.3, bins = 31 31 31
+  1 neighbor lists, perpetual/occasional/extra = 1 0 0
+  (1) pair lj/cut, perpetual
+      attributes: half, newton on
+      pair build: half/bin/newton
+      stencil: half/bin/3d/newton
+      bin: standard
+Per MPI rank memory allocation (min/avg/max) = 23.32 | 23.32 | 23.32 Mbytes
+Step Temp Press E_bond 
+       0   0.20364776   0.38190023    3.2238983 
+     200    1.1897148  0.045877634   0.71741766 
+     400   0.85565394  0.054421408   0.44886866 
+     600   0.61733627   0.05055617   0.31651497 
+     800   0.48172921  0.050667213   0.21385241 
+    1000   0.38247787  0.050517376   0.16533728 
+    1200   0.32158332  0.048690549   0.12630333 
+    1400   0.27938452  0.050130483    0.1024334 
+    1600   0.25236024  0.051400336  0.081986126 
+    1800   0.23028075  0.050296293  0.076131848 
+    2000    0.2228411  0.049120604  0.066008785 
+    2200   0.22281774  0.050589405  0.059091187 
+    2400   0.22371707  0.048740433  0.061661058 
+    2600   0.22960851  0.050775821  0.063008967 
+    2800   0.23592353  0.049859102  0.062554302 
+    3000   0.23629403  0.050348826  0.062032769 
+    3200   0.23079286  0.047749766  0.058957474 
+    3400   0.22670928  0.051298096   0.05508202 
+    3600   0.22608788   0.04904626  0.053500684 
+    3800   0.22768066  0.051760875  0.054181108 
+    4000   0.23004386  0.048992244  0.055963456 
+    4200   0.23251943  0.049553477  0.055634292 
+    4400   0.23205538  0.050028636   0.05447905 
+    4600   0.22928024  0.048580523  0.053039087 
+    4800   0.22753598  0.048345434  0.050436772 
+    5000   0.22808996  0.050158056  0.048064636 
+    5200   0.22763087  0.049840553  0.049648726 
+    5400   0.22986796  0.047751926  0.049795576 
+    5600   0.23120939   0.05038963  0.050081648 
+    5800   0.23251977  0.049311464  0.047946437 
+    6000   0.22962368  0.049136774  0.050149856 
+    6200   0.23109311  0.048471605   0.04749548 
+    6400   0.23084797  0.051182522  0.045543549 
+    6600   0.22787964  0.050573319  0.045957552 
+    6800   0.22686241  0.049082404  0.047198082 
+    7000   0.23018335  0.050392779   0.04568784 
+    7200   0.23155393  0.051046381  0.046074578 
+    7400   0.23133085  0.049788152  0.045816421 
+    7600   0.23123257  0.048299452  0.044285155 
+    7800   0.22721336  0.049784236  0.045162414 
+    8000   0.22869719  0.049008995  0.042893902 
+    8200   0.23014936  0.049872856   0.04542169 
+    8400   0.23135943  0.049868031  0.042211912 
+    8600    0.2329137  0.049703008  0.041557076 
+    8800   0.23168996  0.050784365  0.042444376 
+    9000   0.22809535  0.048985092  0.042900053 
+    9200   0.22947684   0.05022736  0.039662695 
+    9400   0.22979529  0.049566231  0.039931574 
+    9600   0.22968182  0.049737818  0.041266684 
+    9800    0.2332181  0.049492491  0.041229045 
+   10000   0.23100297  0.049084074  0.041412012 
+Loop time of 78.8169 on 1 procs for 10000 steps with 21702 atoms
+
+Performance: 54810.561 tau/day, 126.876 timesteps/s
+99.9% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 56.706     | 56.706     | 56.706     |   0.0 | 71.95
+Bond    | 0.56092    | 0.56092    | 0.56092    |   0.0 |  0.71
+Neigh   | 12.394     | 12.394     | 12.394     |   0.0 | 15.73
+Comm    | 0.9715     | 0.9715     | 0.9715     |   0.0 |  1.23
+Output  | 2.5652     | 2.5652     | 2.5652     |   0.0 |  3.25
+Modify  | 5.2015     | 5.2015     | 5.2015     |   0.0 |  6.60
+Other   |            | 0.4172     |            |       |  0.53
+
+Nlocal:        21702.0 ave       21702 max       21702 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:        5774.00 ave        5774 max        5774 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:        594882.0 ave      594882 max      594882 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 594882
+Ave neighs/atom = 27.411391
+Ave special neighs/atom = 1.2619113
+Neighbor list builds = 747
+Dangerous builds = 144
+
+
+fix         2 bilayer nvt/asphere temp ${T} ${T} ${LD}
+fix         2 bilayer nvt/asphere temp 0.23 ${T} ${LD}
+fix         2 bilayer nvt/asphere temp 0.23 0.23 ${LD}
+fix         2 bilayer nvt/asphere temp 0.23 0.23 1
+run 					10000
+Per MPI rank memory allocation (min/avg/max) = 23.87 | 23.87 | 23.87 Mbytes
+Step Temp Press E_bond 
+   10000   0.23100297  0.049084074  0.041412012 
+   10200   0.23892362   0.02778606  0.030752616 
+   10400   0.24853653  0.044132484  0.025896105 
+   10600   0.25298164   0.04815133  0.022026464 
+   10800   0.25457496  0.048678839  0.020798314 
+   11000   0.25639062   0.05005181  0.019290743 
+   11200   0.25734971  0.049162828  0.018770829 
+   11400   0.25862883  0.048950108  0.018700211 
+   11600    0.2592615  0.050248285  0.017295043 
+   11800   0.25809686  0.050437003    0.0185797 
+   12000   0.25816684  0.051051918  0.018771263 
+   12200   0.25787749  0.050668418  0.018119309 
+   12400   0.25756145  0.050772454  0.018024574 
+   12600   0.25836522  0.049853744  0.017774009 
+   12800   0.25711622  0.050644366  0.018038027 
+   13000   0.25800134   0.05035442  0.018669981 
+   13200   0.25900093  0.049828087  0.018175317 
+   13400   0.25712625  0.048178718  0.018300847 
+   13600   0.25791295  0.050666398  0.018272525 
+   13800    0.2583207  0.050428008  0.018171156 
+   14000   0.25913477  0.050672343  0.016925233 
+   14200   0.26046294  0.050457068  0.018065356 
+   14400   0.26015351  0.051266562  0.017534629 
+   14600   0.26299677  0.050039776  0.016993065 
+   14800   0.26093755  0.050442435  0.017739014 
+   15000   0.26086838  0.049909821  0.017389904 
+   15200   0.26459098   0.05145246  0.017305022 
+   15400   0.26611486   0.05085515  0.017348373 
+   15600   0.26631382  0.049553873  0.016534955 
+   15800   0.26612085  0.049966937  0.017342569 
+   16000   0.26566863  0.049353355  0.017173014 
+   16200   0.26703981  0.048183998  0.016830376 
+   16400   0.26881315  0.050834814  0.016447362 
+   16600   0.26874874  0.051124724  0.016678072 
+   16800    0.2693561  0.049784004  0.016203781 
+   17000   0.26970169  0.049896036  0.016209898 
+   17200   0.27163701  0.051526417   0.01706196 
+   17400   0.26904104   0.04972899  0.016310156 
+   17600   0.27082845  0.050222584  0.017075145 
+   17800   0.27182797  0.048484459  0.016424164 
+   18000   0.27124465   0.05086694   0.01607811 
+   18200   0.27111935  0.049749662   0.01569348 
+   18400   0.27121904  0.048583432  0.015924374 
+   18600   0.27086962  0.049607629  0.015673568 
+   18800   0.27240037  0.049720727   0.01601396 
+   19000   0.27312218  0.049553962  0.016850219 
+   19200   0.27257732  0.049796814  0.016703874 
+   19400   0.27225571  0.049242846  0.015780348 
+   19600    0.2720165  0.050074135     0.015535 
+   19800   0.27464635   0.04986604  0.015558782 
+   20000   0.27395119  0.050734961  0.016107104 
+Loop time of 98.2545 on 1 procs for 10000 steps with 21702 atoms
+
+Performance: 43967.463 tau/day, 101.777 timesteps/s
+99.9% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 54.414     | 54.414     | 54.414     |   0.0 | 55.38
+Bond    | 0.55774    | 0.55774    | 0.55774    |   0.0 |  0.57
+Neigh   | 17.119     | 17.119     | 17.119     |   0.0 | 17.42
+Comm    | 1.6606     | 1.6606     | 1.6606     |   0.0 |  1.69
+Output  | 2.5836     | 2.5836     | 2.5836     |   0.0 |  2.63
+Modify  | 21.53      | 21.53      | 21.53      |   0.0 | 21.91
+Other   |            | 0.3902     |            |       |  0.40
+
+Nlocal:        21702.0 ave       21702 max       21702 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:        8326.00 ave        8326 max        8326 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:        642475.0 ave      642475 max      642475 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 642475
+Ave neighs/atom = 29.604414
+Ave special neighs/atom = 1.2619113
+Neighbor list builds = 894
+Dangerous builds = 229
+
+
+
+### change RBC volume
+
+
+fix         3 water adapt 1 pair lj/cut sigma  6 6 v_scale1
+run 					10000
+Per MPI rank memory allocation (min/avg/max) = 24.08 | 24.08 | 24.08 Mbytes
+Step Temp Press E_bond 
+   20000   0.27395119  0.050734961  0.016107104 
+   20200   0.27490804  0.047913235  0.015182276 
+   20400   0.27418798  0.050654486  0.015496953 
+   20600   0.27158228   0.05055989   0.01506213 
+   20800     0.274749  0.048474229   0.01494294 
+   21000   0.27297945  0.049793834  0.014885446 
+   21200   0.27358926  0.050029295  0.015438854 
+   21400   0.27356164  0.049890477  0.014993506 
+   21600    0.2735874  0.050498319  0.014964178 
+   21800   0.27403976  0.050540983  0.015748734 
+   22000   0.27474395  0.050535974   0.01517684 
+   22200   0.27371865   0.04953312  0.015338609 
+   22400   0.27345127  0.050906777  0.014483335 
+   22600   0.27400168  0.049494931   0.01450901 
+   22800   0.27468025    0.0510895  0.014628287 
+   23000   0.27300944  0.050193684  0.014740599 
+   23200   0.27450994  0.050469454  0.014535257 
+   23400   0.27438348  0.050383401  0.014170693 
+   23600   0.27345927  0.049859098  0.014521639 
+   23800   0.27319986  0.050577862  0.014329269 
+   24000   0.27381463  0.049537221   0.01466711 
+   24200   0.27276532  0.050331618  0.014233128 
+   24400   0.27375522   0.04929976  0.014457608 
+   24600   0.27350692  0.050184163  0.014390101 
+   24800   0.27383626  0.051210749  0.014118019 
+   25000   0.27272082  0.048722398  0.013803625 
+   25200   0.27399552   0.05117196  0.013951399 
+   25400   0.27334368  0.051310593  0.013529025 
+   25600   0.27201406  0.049570259  0.013770799 
+   25800   0.27234833  0.048951485  0.013215294 
+   26000   0.27304325  0.048908044  0.013789147 
+   26200   0.27319872  0.049768811  0.013041348 
+   26400   0.27219855  0.049574289  0.014023127 
+   26600   0.27251493   0.04991196   0.01390352 
+   26800   0.27154639  0.049114289  0.013956328 
+   27000   0.27329007  0.049904349  0.014063132 
+   27200   0.27339211  0.050730198  0.013189009 
+   27400     0.274724  0.049764111  0.013874649 
+   27600   0.27044659  0.049802497  0.013301108 
+   27800   0.27225914  0.051014585  0.013551607 
+   28000   0.27186967  0.048818847   0.01279598 
+   28200    0.2731789  0.050325681  0.013310143 
+   28400   0.27300298  0.049465207  0.013296385 
+   28600   0.27181348  0.049240762   0.01351694 
+   28800   0.27222428   0.04954161  0.013112775 
+   29000   0.27216633  0.048691595  0.013019223 
+   29200   0.27292895  0.049691339  0.013487183 
+   29400   0.27311734  0.049921858  0.013304139 
+   29600   0.27343587  0.049439722  0.013544151 
+   29800   0.27196425  0.051764613  0.013070079 
+   30000   0.27365303  0.050688992  0.012792463 
+Loop time of 126.199 on 1 procs for 10000 steps with 21702 atoms
+
+Performance: 34231.526 tau/day, 79.240 timesteps/s
+99.9% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 77.547     | 77.547     | 77.547     |   0.0 | 61.45
+Bond    | 0.55169    | 0.55169    | 0.55169    |   0.0 |  0.44
+Neigh   | 20.949     | 20.949     | 20.949     |   0.0 | 16.60
+Comm    | 1.8891     | 1.8891     | 1.8891     |   0.0 |  1.50
+Output  | 2.5808     | 2.5808     | 2.5808     |   0.0 |  2.04
+Modify  | 22.305     | 22.305     | 22.305     |   0.0 | 17.67
+Other   |            | 0.3778     |            |       |  0.30
+
+Nlocal:        21702.0 ave       21702 max       21702 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:        7988.00 ave        7988 max        7988 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    1.02539e+06 ave 1.02539e+06 max 1.02539e+06 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 1025386
+Ave neighs/atom = 47.248456
+Ave special neighs/atom = 1.2619113
+Neighbor list builds = 945
+Dangerous builds = 464
+
+unfix       3
+run 					10000
+Per MPI rank memory allocation (min/avg/max) = 25.61 | 25.61 | 25.61 Mbytes
+Step Temp Press E_bond 
+   30000   0.27365303  0.050688992  0.012792463 
+   30200   0.27135199  0.051032431  0.013700174 
+   30400   0.27235718  0.049145965  0.012788345 
+   30600   0.27148456  0.049923941  0.012900439 
+   30800   0.27151803  0.050806545  0.013249098 
+   31000   0.27177836  0.051277584  0.012943696 
+   31200   0.27159012  0.050577058   0.01274784 
+   31400   0.27092574  0.048105508  0.012655191 
+   31600   0.27211935   0.04946221  0.012297608 
+   31800   0.27074864  0.050026262  0.012840985 
+   32000   0.27170176  0.049868755  0.012916569 
+   32200   0.27277312  0.050684063  0.012962938 
+   32400    0.2729801  0.050112376  0.012872116 
+   32600   0.27196611  0.050883879  0.013436435 
+   32800   0.27199621  0.048995802  0.012978607 
+   33000   0.27218461  0.049317108  0.013330107 
+   33200   0.27292863   0.04847094   0.01296877 
+   33400   0.27330431  0.050920648  0.013029495 
+   33600   0.27176692  0.050034934  0.012270979 
+   33800   0.27160751   0.05041186  0.012597132 
+   34000   0.27234423  0.049368808   0.01282543 
+   34200   0.27037059  0.049979594  0.012100746 
+   34400   0.27186529  0.050849222      0.01218 
+   34600   0.27186559  0.049360665   0.01277858 
+   34800   0.27036032  0.050111021   0.01326193 
+   35000   0.27197668  0.049608265   0.01237169 
+   35200   0.27195781  0.051216002   0.01305977 
+   35400   0.27337662  0.048660731  0.012740782 
+   35600   0.27217359   0.04933493  0.012429657 
+   35800    0.2721998  0.048932762   0.01277266 
+   36000   0.27263604  0.049881712  0.012203484 
+   36200   0.27191576  0.051760091  0.012452402 
+   36400   0.27193908  0.049326936  0.012638427 
+   36600   0.27249658  0.049781388  0.011933276 
+   36800    0.2714126  0.048843357  0.012958209 
+   37000   0.27125062  0.049163278  0.012762654 
+   37200   0.27233681  0.049394026  0.012873166 
+   37400   0.27124926  0.049534176  0.012313385 
+   37600   0.27206293  0.050707543  0.012782554 
+   37800   0.27232423  0.050659368  0.012996533 
+   38000    0.2731895  0.049586522  0.012399117 
+   38200   0.27211688  0.049900457  0.012754017 
+   38400   0.27101834  0.050948702  0.012349663 
+   38600   0.27200031  0.050402284  0.012545264 
+   38800    0.2724041  0.050208214  0.012627382 
+   39000   0.27184258  0.049531899  0.012633051 
+   39200    0.2714547  0.050619328  0.012789673 
+   39400   0.27280314  0.051000597  0.012663859 
+   39600   0.27357409  0.049430366  0.012209644 
+   39800   0.27215383  0.050707087  0.012694519 
+   40000   0.27172854  0.049443272  0.012362248 
+Loop time of 149.056 on 1 procs for 10000 steps with 21702 atoms
+
+Performance: 28982.394 tau/day, 67.089 timesteps/s
+99.9% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 96.871     | 96.871     | 96.871     |   0.0 | 64.99
+Bond    | 0.55091    | 0.55091    | 0.55091    |   0.0 |  0.37
+Neigh   | 24.956     | 24.956     | 24.956     |   0.0 | 16.74
+Comm    | 1.8101     | 1.8101     | 1.8101     |   0.0 |  1.21
+Output  | 2.5685     | 2.5685     | 2.5685     |   0.0 |  1.72
+Modify  | 21.94      | 21.94      | 21.94      |   0.0 | 14.72
+Other   |            | 0.3595     |            |       |  0.24
+
+Nlocal:        21702.0 ave       21702 max       21702 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:        7805.00 ave        7805 max        7805 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    1.17458e+06 ave 1.17458e+06 max 1.17458e+06 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 1174578
+Ave neighs/atom = 54.123030
+Ave special neighs/atom = 1.2619113
+Neighbor list builds = 977
+Dangerous builds = 766
+Total wall time: 0:07:32
